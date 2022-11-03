@@ -140,7 +140,20 @@ def test(weightMatrix, testSet, feature1, feature2, bias):
     print(resultDF)
     accuracy = (totalTrue / (totalTrue + totalFalse)) * 100
     print('accuracy: {}'.format(accuracy))
-    return 1
+    plotTestGraph(testSet, feature1, feature2)
+
+
+def plotTestGraph(testSet, xAxis, yAxis):
+    class1DataFrame = testSet.loc[testSet['species'].isin([-1])]
+    class2DataFrame = testSet.loc[testSet['species'].isin([1])]
+
+    plt.figure('Graph')
+    plt.cla()
+    plt.scatter(class1DataFrame[xAxis], class1DataFrame[yAxis], color='red')
+    plt.scatter(class2DataFrame[xAxis], class2DataFrame[yAxis], color='blue')
+    plt.xlabel(xAxis)
+    plt.ylabel(yAxis)
+    plt.show()
 
 
 if __name__ == '__main__':
