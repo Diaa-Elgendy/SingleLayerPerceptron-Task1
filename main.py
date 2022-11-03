@@ -103,9 +103,8 @@ def singleNeuron(trainSet, weightMatrix, feature1, feature2, bias, etaValue, epo
     for x in range(epochs):
         for i in trainSet.index:
             selectedRow = [[bias, trainSet[feature1][i], trainSet[feature2][i]]]
-            selectedRow = np.array(selectedRow)
             selectedClass = trainSet['species'][i]
-            yi = np.dot(selectedRow, weightMatrix.T)
+            yi = np.dot(np.array(selectedRow), weightMatrix.T)
             # print("\nFirst matrix {}".format(selectedRow))
             # print("Second matrix {}".format(weightMatrix))
             # print("Result: {}".format(yi))
