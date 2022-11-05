@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 
-# ToDO: remove first choice form second dropDownMenu
+# ToDo: remove first choice form second dropDownMenu
 features = [
     "bill_length_mm",
     "bill_depth_mm",
@@ -23,23 +23,29 @@ species = [
 ]
 
 
+# Visualize Penguins dataset
+# and draw all possible combinations between them
 def plotGraph(originalDF, xAxis, yAxis):
-    class1DataFrame = originalDF.loc[originalDF['species'].isin(['Adelie'])]
-    class2DataFrame = originalDF.loc[originalDF['species'].isin(['Gentoo'])]
-    class3DataFrame = originalDF.loc[originalDF['species'].isin(['Chinstrap'])]
-
     plt.figure('Graph')
     plt.cla()
+
+    class1DataFrame = originalDF.loc[originalDF['species'].isin(['Adelie'])]
     plt.scatter(class1DataFrame[xAxis], class1DataFrame[yAxis], color='red')
+
+    class2DataFrame = originalDF.loc[originalDF['species'].isin(['Gentoo'])]
     plt.scatter(class2DataFrame[xAxis], class2DataFrame[yAxis], color='blue')
+
+    class3DataFrame = originalDF.loc[originalDF['species'].isin(['Chinstrap'])]
     plt.scatter(class3DataFrame[xAxis], class3DataFrame[yAxis], color='green')
+
     plt.xlabel(xAxis)
     plt.ylabel(yAxis)
     plt.show()
 
 
 # Remove null values from gender column and convert it to numerical values
-def dataCleaning(dataFrame):
+# Normalize all values of all features to range between 0 and 1
+def dataNormalization(dataFrame):
     numberOfMales = dataFrame.gender.value_counts().male
     numberOfFemales = dataFrame.gender.value_counts().female
     if numberOfMales > numberOfFemales:
@@ -48,19 +54,22 @@ def dataCleaning(dataFrame):
         dataFrame.gender.replace({np.NAN: 'female'}, inplace=True)
 
     dataFrame.gender.replace({'male': 1, 'female': 0}, inplace=True)
-    col = dataFrame[['species']]
+
+    # Remove species column to apply normalization
+    speciesDF = dataFrame[['species']]
     dataFrame = dataFrame.drop(columns=['species'])
 
-    # apply normalization techniques
+    # normalization
     for column in dataFrame.columns:
         dataFrame[column] = dataFrame[column] / dataFrame[column].abs().max()
 
-    # view normalized data
-    frames = [col, dataFrame]
+    # add species column again to dataframe
+    frames = [speciesDF, dataFrame]
     dataFrame = pd.concat(frames, axis=1)
     return dataFrame
 
 
+# get all data from gui
 def getDataFromGUI():
     feature1 = feature1Value.get()
     feature2 = feature2Value.get()
@@ -78,10 +87,6 @@ def getDataFromGUI():
     class1train, class1test, class2train, class2test = dataSplitter(class1, class2, feature1, feature2,
                                                                     originalDataframe)
 
-    # XxW = 0 + Bias
-
-    # [[7,3],[x,y],[x,y]]
-
     # To merge train sets together the shuffle them
     trainData = pd.concat([class1train, class2train])
     trainData = shuffle(trainData)
@@ -92,10 +97,9 @@ def getDataFromGUI():
     test(weightMatrix, testData, feature1, feature2, bias)
 
 
-# Replace selected classes with numerical values and drop the 3rd class
-# Split train and test dataframes
-def dataSplitter(class1, class2, feature1, feature2, originalDF):
-    dataframe = originalDF
+# Replace selected 2 species with numerical values and drop the 3rd class
+# Split train and test dataframes and shuffle them
+def dataSplitter(class1, class2, feature1, feature2, dataframe):
     dataframe.species.replace({class1: -1, class2: 1}, inplace=True)
     unwantedClass = dataframe[dataframe['species'] != -1].index & dataframe[dataframe['species'] != 1].index
     dataframe.drop(unwantedClass, inplace=True)
@@ -117,9 +121,6 @@ def train(trainSet, weightMatrix, feature1, feature2, bias, etaValue, epochs):
             selectedRow = [[bias, trainSet[feature1][i], trainSet[feature2][i]]]
             selectedClass = trainSet['species'][i]
             yi = np.dot(np.array(selectedRow), weightMatrix.T)
-            # print("\nFirst matrix {}".format(selectedRow))
-            # print("Second matrix {}".format(weightMatrix))
-            # print("Result: {}".format(yi))
             result = signum(yi)
             if result != selectedClass:
                 loss = selectedClass - result
@@ -135,22 +136,30 @@ def signum(yi):
 def test(weightMatrix, testSet, feature1, feature2, bias):
     print(testSet)
     resultDF = pd.DataFrame(columns=['Actual Class', 'Predicted Class', 'Result'])
-    totalTrue = 0
-    totalFalse = 0
+    truePos = 0
+    trueNeg = 0
+    falseNeg = 0
+    falsePos = 0
     for i in testSet.index:
         testRow = [[bias, testSet[feature1][i], testSet[feature2][i]]]
         actualResult = testSet['species'][i]
         yPredicted = np.dot(testRow, weightMatrix.T)
         predictedResult = signum(yPredicted)
-        if actualResult == predictedResult:
-            resultDF.loc[len(resultDF.index)] = [actualResult, predictedResult, True]
-            totalTrue = totalTrue + 1
-        else:
-            resultDF.loc[len(resultDF.index)] = [actualResult, predictedResult, False]
-            totalFalse = totalFalse + 1
-    print(resultDF)
-    accuracy = (totalTrue / (totalTrue + totalFalse)) * 100
-    print('accuracy: {}'.format(accuracy))
+        if actualResult == 1 and predictedResult == 1:
+            truePos = truePos + 1
+        elif actualResult == 1 and predictedResult == -1:
+            falseNeg = falseNeg + 1
+        elif actualResult == -1 and predictedResult == 1:
+            falsePos = falsePos + 1
+        elif actualResult == -1 and predictedResult == -1:
+            trueNeg = trueNeg + 1
+
+    accuracy = ((truePos + trueNeg) / len(testSet.index)) * 100
+    print('accuracy: ', accuracy)
+    print('True Positive: ', truePos)
+    print('True Negative: ', trueNeg)
+    print('False Positive: ', falsePos)
+    print('False Negative: ', falseNeg)
     plotTestGraph(testSet, feature1, feature2, weightMatrix)
 
 
@@ -158,29 +167,25 @@ def plotTestGraph(testSet, xAxis, yAxis, weightMatrix):
     bias = weightMatrix[0][0]
     w1 = weightMatrix[0][1]
     w2 = weightMatrix[0][2]
-    x1 = -(0 * w2 + bias) / w1
-    x2 = -(0 * w2 + bias) / w2
+    x1 = np.linspace(testSet.loc[:, xAxis].min(), testSet.loc[:, xAxis].max(), 4000)
+    x2 = -(w1 * x1 + bias) / w2
 
-    print(x1)
-    print(x2)
     class1DataFrame = testSet.loc[testSet['species'].isin([-1])]
     class2DataFrame = testSet.loc[testSet['species'].isin([1])]
+
     plt.figure('Graph')
     plt.cla()
     plt.scatter(class1DataFrame[xAxis], class1DataFrame[yAxis], color='red')
     plt.scatter(class2DataFrame[xAxis], class2DataFrame[yAxis], color='blue')
     plt.xlabel(xAxis)
     plt.ylabel(yAxis)
-    x_values = [0, x1]
-    y_values = [x2, 0]
-    plt.plot(x_values, y_values, 'bo', linestyle="--")
-    plt.plot(x_values, y_values, 'bo', linestyle="--")
+    plt.plot(x1, x2, linestyle='solid', color='orange')
     plt.show()
 
 
 if __name__ == '__main__':
     originalDataframe = pd.read_csv(r'penguins.csv')
-    originalDataframe = dataCleaning(originalDataframe)
+    originalDataframe = dataNormalization(originalDataframe)
 
     main_window = Tk()
     main_window.title('Task One')
