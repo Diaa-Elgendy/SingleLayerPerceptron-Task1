@@ -1,11 +1,8 @@
-import random
-import tkinter
 from tkinter import *
-import csv
 from tkinter import ttk
 from tkinter.ttk import Separator
-import numpy as np
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
@@ -51,6 +48,16 @@ def dataCleaning(dataFrame):
         dataFrame.gender.replace({np.NAN: 'female'}, inplace=True)
 
     dataFrame.gender.replace({'male': 1, 'female': 0}, inplace=True)
+    col = dataFrame[['species']]
+    dataFrame = dataFrame.drop(columns=['species'])
+
+    # apply normalization techniques
+    for column in dataFrame.columns:
+        dataFrame[column] = dataFrame[column] / dataFrame[column].abs().max()
+
+    # view normalized data
+    frames = [col, dataFrame]
+    dataFrame = pd.concat(frames, axis=1)
     return dataFrame
 
 
@@ -59,9 +66,10 @@ def getDataFromGUI():
     feature2 = feature2Value.get()
     class1 = class1Value.get()
     class2 = class2Value.get()
-    etaValue = int(learningRateTextField.get())
+    etaValue = float(learningRateTextField.get())
     epochsValue = int(numberOfEpochsTextField.get())
     weightMatrix = np.random.rand(3, 1)
+
     if biasCheckBox.get() == 0:
         bias = 0
     else:
@@ -70,13 +78,17 @@ def getDataFromGUI():
     class1train, class1test, class2train, class2test = dataSplitter(class1, class2, feature1, feature2,
                                                                     originalDataframe)
 
+    # XxW = 0 + Bias
+
+    # [[7,3],[x,y],[x,y]]
+
     # To merge train sets together the shuffle them
     trainData = pd.concat([class1train, class2train])
     trainData = shuffle(trainData)
     testData = pd.concat([class1test, class2test])
     testData = shuffle(testData)
 
-    weightMatrix = singleNeuron(trainData, weightMatrix, feature1, feature2, bias, etaValue, epochsValue)
+    weightMatrix = train(trainData, weightMatrix, feature1, feature2, bias, etaValue, epochsValue)
     test(weightMatrix, testData, feature1, feature2, bias)
 
 
@@ -98,7 +110,7 @@ def dataSplitter(class1, class2, feature1, feature2, originalDF):
     return class1train, class1test, class2train, class2test
 
 
-def singleNeuron(trainSet, weightMatrix, feature1, feature2, bias, etaValue, epochs):
+def train(trainSet, weightMatrix, feature1, feature2, bias, etaValue, epochs):
     weightMatrix = weightMatrix.transpose()
     for x in range(epochs):
         for i in trainSet.index:
@@ -139,19 +151,30 @@ def test(weightMatrix, testSet, feature1, feature2, bias):
     print(resultDF)
     accuracy = (totalTrue / (totalTrue + totalFalse)) * 100
     print('accuracy: {}'.format(accuracy))
-    plotTestGraph(testSet, feature1, feature2)
+    plotTestGraph(testSet, feature1, feature2, weightMatrix)
 
 
-def plotTestGraph(testSet, xAxis, yAxis):
+def plotTestGraph(testSet, xAxis, yAxis, weightMatrix):
+    bias = weightMatrix[0][0]
+    w1 = weightMatrix[0][1]
+    w2 = weightMatrix[0][2]
+    x1 = -(0 * w2 + bias) / w1
+    x2 = -(0 * w2 + bias) / w2
+
+    print(x1)
+    print(x2)
     class1DataFrame = testSet.loc[testSet['species'].isin([-1])]
     class2DataFrame = testSet.loc[testSet['species'].isin([1])]
-
     plt.figure('Graph')
     plt.cla()
     plt.scatter(class1DataFrame[xAxis], class1DataFrame[yAxis], color='red')
     plt.scatter(class2DataFrame[xAxis], class2DataFrame[yAxis], color='blue')
     plt.xlabel(xAxis)
     plt.ylabel(yAxis)
+    x_values = [0, x1]
+    y_values = [x2, 0]
+    plt.plot(x_values, y_values, 'bo', linestyle="--")
+    plt.plot(x_values, y_values, 'bo', linestyle="--")
     plt.show()
 
 
