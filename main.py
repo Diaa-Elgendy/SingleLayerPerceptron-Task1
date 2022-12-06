@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 
-# ToDo: remove first choice form second dropDownMenu
 features = [
     "bill_length_mm",
     "bill_depth_mm",
@@ -29,6 +28,8 @@ def plotGraph(originalDF, xAxis, yAxis):
     plt.figure('Graph')
     plt.cla()
 
+    # Separate each class in different dataframe
+    # Then Draw the data frame on xAxis and yAxis
     class1DataFrame = originalDF.loc[originalDF['species'].isin(['Adelie'])]
     plt.scatter(class1DataFrame[xAxis], class1DataFrame[yAxis], color='red')
 
@@ -46,8 +47,10 @@ def plotGraph(originalDF, xAxis, yAxis):
 # Remove null values from gender column and convert it to numerical values
 # Normalize all values of all features to range between 0 and 1
 def dataNormalization(dataFrame):
+    # Get number of male and females
     numberOfMales = dataFrame.gender.value_counts().male
     numberOfFemales = dataFrame.gender.value_counts().female
+    # Merge the Null values with the class with the highest number
     if numberOfMales > numberOfFemales:
         dataFrame.gender.replace({np.NAN: 'male'}, inplace=True)
     else:
@@ -55,7 +58,8 @@ def dataNormalization(dataFrame):
 
     dataFrame.gender.replace({'male': 1, 'female': 0}, inplace=True)
 
-    # Remove species column to apply normalization
+    # No normalize for strings
+    # So, remove species column from dataframe to apply normalization
     speciesDF = dataFrame[['species']]
     dataFrame = dataFrame.drop(columns=['species'])
 
@@ -63,7 +67,7 @@ def dataNormalization(dataFrame):
     for column in dataFrame.columns:
         dataFrame[column] = dataFrame[column] / dataFrame[column].abs().max()
 
-    # add species column again to dataframe
+    # Merge species column again to dataframe
     frames = [speciesDF, dataFrame]
     dataFrame = pd.concat(frames, axis=1)
     return dataFrame
@@ -100,15 +104,21 @@ def getDataFromGUI():
 # Replace selected 2 species with numerical values and drop the 3rd class
 # Split train and test dataframes and shuffle them
 def dataSplitter(class1, class2, feature1, feature2, dataframe):
+    # Replace first class with -1 and second with 1
     dataframe.species.replace({class1: -1, class2: 1}, inplace=True)
+    # remove the unwanted third class
     unwantedClass = dataframe[dataframe['species'] != -1].index & dataframe[dataframe['species'] != 1].index
     dataframe.drop(unwantedClass, inplace=True)
+    # Remove the unwanted features
     dataframe = dataframe[['species', feature1, feature2]]  # remove unwanted columns
+
+    # Split the two classes into two separate data frames
     class1DataFrame = dataframe.loc[dataframe['species'].isin([-1])]
     class1DataFrame = shuffle(class1DataFrame)
     class2DataFrame = dataframe.loc[dataframe['species'].isin([1])]
     class2DataFrame = shuffle(class2DataFrame)
-    # print(class1DataFrame)
+
+    # Split data frames into train test data frames
     class1train, class1test = train_test_split(class1DataFrame, test_size=0.4)
     class2train, class2test = train_test_split(class2DataFrame, test_size=0.4)
     return class1train, class1test, class2train, class2test
@@ -116,16 +126,22 @@ def dataSplitter(class1, class2, feature1, feature2, dataframe):
 
 def train(trainSet, weightMatrix, feature1, feature2, bias, etaValue, epochs):
     weightMatrix = weightMatrix.transpose()
+    print(trainSet)
     for x in range(epochs):
         for i in trainSet.index:
-            selectedRow = [[bias, trainSet[feature1][i], trainSet[feature2][i]]]
-            selectedClass = trainSet['species'][i]
-            yi = np.dot(np.array(selectedRow), weightMatrix.T)
-            result = signum(yi)
-            if result != selectedClass:
-                loss = selectedClass - result
-                arr = np.asarray(selectedRow)
-                weightMatrix = (etaValue * loss) * arr + weightMatrix
+            # Select the wanted row from the dataframe
+            selectedFeatures = [[bias, trainSet[feature1][i], trainSet[feature2][i]]]
+            actualClass = trainSet['species'][i]
+
+            # Multiply the features by weight matrix to get the predicted class
+            yi = np.dot(np.array(selectedFeatures), weightMatrix.T)
+            predictedClass = signum(yi)
+            # Calculate error
+            if predictedClass != actualClass:
+                error = actualClass - predictedClass
+                arr = np.asarray(selectedFeatures)
+                weightMatrix = ((etaValue * error) * arr) + weightMatrix
+
     return weightMatrix
 
 
@@ -134,24 +150,23 @@ def signum(yi):
 
 
 def test(weightMatrix, testSet, feature1, feature2, bias):
-    print(testSet)
-    resultDF = pd.DataFrame(columns=['Actual Class', 'Predicted Class', 'Result'])
-    truePos = 0
-    trueNeg = 0
-    falseNeg = 0
-    falsePos = 0
+    truePos = trueNeg = falsePos = falseNeg = 0
+
     for i in testSet.index:
-        testRow = [[bias, testSet[feature1][i], testSet[feature2][i]]]
-        actualResult = testSet['species'][i]
-        yPredicted = np.dot(testRow, weightMatrix.T)
-        predictedResult = signum(yPredicted)
-        if actualResult == 1 and predictedResult == 1:
+        # Select the wanted row from the dataframe
+        selectedFeatures = [[bias, testSet[feature1][i], testSet[feature2][i]]]
+        actualClass = testSet['species'][i]
+        # Multiply the features by weight matrix to get the predicted class
+        yi = np.dot(selectedFeatures, weightMatrix.T)
+        predictedClass = signum(yi)
+
+        if actualClass == 1 and predictedClass == 1:
             truePos = truePos + 1
-        elif actualResult == 1 and predictedResult == -1:
+        elif actualClass == 1 and predictedClass == -1:
             falseNeg = falseNeg + 1
-        elif actualResult == -1 and predictedResult == 1:
+        elif actualClass == -1 and predictedClass == 1:
             falsePos = falsePos + 1
-        elif actualResult == -1 and predictedResult == -1:
+        elif actualClass == -1 and predictedClass == -1:
             trueNeg = trueNeg + 1
 
     accuracy = ((truePos + trueNeg) / len(testSet.index)) * 100
@@ -164,12 +179,17 @@ def test(weightMatrix, testSet, feature1, feature2, bias):
 
 
 def plotTestGraph(testSet, xAxis, yAxis, weightMatrix):
+    print(weightMatrix)
     bias = weightMatrix[0][0]
     w1 = weightMatrix[0][1]
     w2 = weightMatrix[0][2]
-    x1 = np.linspace(testSet.loc[:, xAxis].min(), testSet.loc[:, xAxis].max(), 4000)
-    x2 = -(w1 * x1 + bias) / w2
 
+    # Straight line equation to draw decision boundary
+    x = np.linspace(testSet.loc[:, xAxis].min(), testSet.loc[:, xAxis].max())
+    print(x)
+    y = -(w1 * x + bias) / w2
+
+    # Split each class in different dataframe
     class1DataFrame = testSet.loc[testSet['species'].isin([-1])]
     class2DataFrame = testSet.loc[testSet['species'].isin([1])]
 
@@ -179,7 +199,7 @@ def plotTestGraph(testSet, xAxis, yAxis, weightMatrix):
     plt.scatter(class2DataFrame[xAxis], class2DataFrame[yAxis], color='blue')
     plt.xlabel(xAxis)
     plt.ylabel(yAxis)
-    plt.plot(x1, x2, linestyle='solid', color='orange')
+    plt.plot(x, y, linestyle='solid', color='orange')
     plt.show()
 
 
