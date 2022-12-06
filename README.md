@@ -8,3 +8,7 @@ Single layer perceptron using Signum activation function on penguins' data set
 ## Dataset (Penguins)
 - The data set consists of 50 samples from each of three species of Penguins (Adelie, Gentoo and Chinstrap).  
 - Five features were measured from each sample: bill_length, bill_depth, flipper_length, gender and body_mass, (in millimeter).
+
+## Output 
+
+![Screenshot 2022-12-07 004212](https://user-images.githubusercontent.com/88054373/206039737-9e89dd85-fe05-494e-93ef-045bb8fe7ad9.png)
