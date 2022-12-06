@@ -81,13 +81,15 @@ def getDataFromGUI():
     class2 = class2Value.get()
     etaValue = float(learningRateTextField.get())
     epochsValue = int(numberOfEpochsTextField.get())
-    weightMatrix = np.random.rand(3, 1)
-
+    weightMatrix = np.random.rand(2, 1)
+    biasValue = np.zeros((1, 1))
     if biasCheckBox.get() == 0:
+        biasValue = np.zeros((1, 1))
         bias = 0
     else:
+        biasValue = np.ones((1, 1))
         bias = 1
-
+    weightMatrix = np.concatenate([biasValue, weightMatrix])
     class1train, class1test, class2train, class2test = dataSplitter(class1, class2, feature1, feature2,
                                                                     originalDataframe)
 
@@ -126,7 +128,6 @@ def dataSplitter(class1, class2, feature1, feature2, dataframe):
 
 def train(trainSet, weightMatrix, feature1, feature2, bias, etaValue, epochs):
     weightMatrix = weightMatrix.transpose()
-    print(trainSet)
     for x in range(epochs):
         for i in trainSet.index:
             # Select the wanted row from the dataframe
@@ -179,14 +180,12 @@ def test(weightMatrix, testSet, feature1, feature2, bias):
 
 
 def plotTestGraph(testSet, xAxis, yAxis, weightMatrix):
-    print(weightMatrix)
     bias = weightMatrix[0][0]
     w1 = weightMatrix[0][1]
     w2 = weightMatrix[0][2]
 
     # Straight line equation to draw decision boundary
     x = np.linspace(testSet.loc[:, xAxis].min(), testSet.loc[:, xAxis].max())
-    print(x)
     y = -(w1 * x + bias) / w2
 
     # Split each class in different dataframe
